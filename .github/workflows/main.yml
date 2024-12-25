@@ -37,8 +37,6 @@ jobs:
       - name: Build Frontend (npm)
         working-directory: ./src
         run: npm run build
-        env:
-          NODE_OPTIONS: --openssl-legacy-provider
 
       - name: Build Backend (Mage) for ARM64
         run: |
