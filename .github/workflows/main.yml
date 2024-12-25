@@ -1,0 +1,50 @@
+name: Build and Upload Grafana Plugin on ARM Ubuntu (using arm-runner-action)
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-upload:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [1.19.x]
+        node-version: [16.x]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Run on ARM64
+        uses: pguyot/arm-runner-action@v2
+        with:
+          commands: |
+            sudo apt-get update -y
+            sudo apt-get install -y build-essential
+            go version
+            go mod download
+            go run github.com/magefile/mage -v build
+            node -v
+            npm -v
+            npm install
+            npm run build
+            mkdir -p release-artifacts
+            cp -r dist release-artifacts/
+            cp -r LICENSE README.md release-artifacts/
+            # Assuming the backend binary is placed in the root after 'mage -v build'
+            cp plugin-linux-arm64 release-artifacts/
+            cd release-artifacts
+            zip -r ../plugin-arm64.zip .
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          go_version: ${{ matrix.go-version }}
+          node_version: ${{ matrix.node-version }}
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.get_latest_release.outputs.upload_url }}
+          asset_path: ./plugin-arm64.zip
+          asset_name: plugin-linux-arm64.zip
+          asset_content_type: application/zip
