@@ -5,48 +5,31 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest # 这里使用 ubuntu-latest，虽然是 x86_64 架构，但可以在里面配置 ARM 环境
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Install Docker
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common
-          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
-          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
-          sudo apt-get update
-          sudo apt-get install -y docker.io
-
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
         with:
-          platforms: arm64 # 或者你需要的其他 ARM 平台
+          platforms: arm64 # 指定目标平台
 
       - name: Set up Docker Buildx
-        id: buildx
         uses: docker/setup-buildx-action@v2
 
-      - name: Install dependencies for ARM
-        run: |
-          docker run --rm --privileged multiarch/qemu-user-static:register --reset
-          docker run --rm -it ubuntu:latest /bin/bash -c "apt-get update && apt-get install -y --no-install-recommends build-essential ca-certificates git wget curl gnupg lsb-release nodejs npm"
-
-      - name: Set up Go for ARM
-        uses: actions/setup-go@v3
-        with:
-          go-version: '1.18' # 或者你需要的 Go 版本
-
-      - name: Install Mage
-        run: |
-          go install github.com/magefile/mage@latest
-
       - name: Build Backend (Mage)
-        working-directory: ./backend # 假设你的后端代码在 backend 目录
-        run: |
-          GOOS=linux GOARCH=arm64 mage # 指定 ARM64 架构编译
+        uses: docker/build-push-action@v2
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile # 假设你的后端 Dockerfile 在这里
+          platforms: linux/arm64
+          build-args: |
+            GOOS=linux
+            GOARCH=arm64
+          outputs: |
+            type=local,dest=./dist/backend
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -62,16 +45,10 @@ jobs:
         run: npm run build
 
       - name: Create Distribution Directory
-        run: mkdir dist
-
-      - name: Copy Backend Artifacts
-        run: |
-          mkdir -p dist/backend
-          cp backend/build/* dist/backend/ # 假设 mage 构建的输出在 backend/build 目录
+        run: mkdir -p dist/frontend
 
       - name: Copy Frontend Artifacts
         run: |
-          mkdir -p dist/frontend
           cp -r src/dist/* dist/frontend/ # 假设 npm run build 的输出在 src/dist 目录
 
       - name: Package Distribution
