@@ -6,15 +6,24 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest # 这里使用 ubuntu-latest，虽然是 x86_64 架构，但可以在里面配置 ARM 环境
-    container:
-      image: ubuntu:latest # 使用 Ubuntu 容器来模拟 ARM 环境
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Install Docker
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common
+          curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+          sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+          sudo apt-get update
+          sudo apt-get install -y docker.io
+
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2 # 用于模拟 ARM 架构
+        uses: docker/setup-qemu-action@v2
+        with:
+          platforms: arm64 # 或者你需要的其他 ARM 平台
 
       - name: Set up Docker Buildx
         id: buildx
@@ -22,17 +31,8 @@ jobs:
 
       - name: Install dependencies for ARM
         run: |
-          apt-get update
-          apt-get install -y --no-install-recommends \
-            build-essential \
-            ca-certificates \
-            git \
-            wget \
-            curl \
-            gnupg \
-            lsb-release \
-            nodejs \
-            npm
+          docker run --rm --privileged multiarch/qemu-user-static:register --reset
+          docker run --rm -it ubuntu:latest /bin/bash -c "apt-get update && apt-get install -y --no-install-recommends build-essential ca-certificates git wget curl gnupg lsb-release nodejs npm"
 
       - name: Set up Go for ARM
         uses: actions/setup-go@v3
