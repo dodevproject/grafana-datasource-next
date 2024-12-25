@@ -16,10 +16,10 @@ jobs:
         with:
           platforms: arm64 # 指定目标平台
 
-      - name: Set up Go for ARM
-        uses: actions/setup-go@v3
+      - name: Set up Go
+        uses: actions/setup-go@v4
         with:
-          go-version: '1.18' # 或者你需要的 Go 版本
+          go-version: '1.22.3'
 
       - name: Install Mage
         run: |
